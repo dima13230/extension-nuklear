@@ -15,7 +15,7 @@ function init(self)
 	self.show_demo_window = false
 	self.show_close_window = false
 
-	imgui.set_ini_filename()
+	nuklear.set_ini_filename()
 
 	style.set()
 
@@ -24,12 +24,12 @@ function init(self)
 end
 
 local function close_window(self)
-	local flags = imgui.WINDOWFLAGS_NOMOVE
-	local full, open = imgui.begin_window("Close window", true, flags)
+	local flags = nuklear.WINDOWFLAGS_NOMOVE
+	local full, open = nuklear.begin_window("Close window", true, flags)
 	if full then
-		imgui.text("You can close this window, but cannot move")
+		nuklear.text("You can close this window, but cannot move")
 	end
-	imgui.end_window()
+	nuklear.end_window()
 	
 	if not open then
 		self.show_close_window = false
@@ -41,81 +41,81 @@ end
 
 
 local function main_menu_bar(self)
-	if imgui.begin_main_menu_bar() then
-		if imgui.begin_menu("File") then
-			if imgui.menu_item("Quit", "Ctrl+Q") then
+	if nuklear.begin_main_menu_bar() then
+		if nuklear.begin_menu("File") then
+			if nuklear.menu_item("Quit", "Ctrl+Q") then
 				sys.exit(0)
 			end
 
-			imgui.end_menu()
+			nuklear.end_menu()
 		end
 
-		if imgui.begin_menu("View") then
-			local clicked = imgui.menu_item("Show Demo Window", nil, self.show_demo_window)
+		if nuklear.begin_menu("View") then
+			local clicked = nuklear.menu_item("Show Demo Window", nil, self.show_demo_window)
 			if clicked then
 				self.show_demo_window = not self.show_demo_window
 			end
 
-			imgui.end_menu()
+			nuklear.end_menu()
 		end
 
-		if imgui.begin_menu("About") then
-			imgui.menu_item("Defold v" .. sys.get_engine_info().version, nil, nil, false)
+		if nuklear.begin_menu("About") then
+			nuklear.menu_item("Defold v" .. sys.get_engine_info().version, nil, nil, false)
 
-			imgui.end_menu()
+			nuklear.end_menu()
 		end
 
-		imgui.end_main_menu_bar()
+		nuklear.end_main_menu_bar()
 	end
 end
 
 local function nested_menu(self)
-	if imgui.begin_menu("Nested Menu") then
-		imgui.menu_item("Nested Item")
+	if nuklear.begin_menu("Nested Menu") then
+		nuklear.menu_item("Nested Item")
 		nested_menu(self)
-		imgui.end_menu()
+		nuklear.end_menu()
 	end
 end
 
 local function menu_bar(self)
-	if imgui.begin_menu_bar() then
-		if imgui.begin_menu("Menu") then
-			if imgui.menu_item("Menu Item") then
+	if nuklear.begin_menu_bar() then
+		if nuklear.begin_menu("Menu") then
+			if nuklear.menu_item("Menu Item") then
 				print("Clicked 'Menu Item'")
 			end
 
-			-- Shortcuts are only visual, ImGui doesn't currently use them
-			imgui.menu_item("Has Shortcut", "Ctrl+A")
+			-- Shortcuts are only visual, nuklear doesn't currently use them
+			nuklear.menu_item("Has Shortcut", "Ctrl+A")
 
-			local changed, active = imgui.menu_item("Toggleable Item", nil, self.toggle_item_active)
+			local changed, active = nuklear.menu_item("Toggleable Item", nil, self.toggle_item_active)
 			if changed then
 				self.toggle_item_active = active
 				print("'Toggleable Item' is " .. (self.toggle_item_active and "on" or "off"))
 			end
 
-			imgui.menu_item("Disabled Item", nil, nil, false)
+			nuklear.menu_item("Disabled Item", nil, nil, false)
 
-			if imgui.begin_menu("Nested Menu") then
-				imgui.menu_item("Item")
+			if nuklear.begin_menu("Nested Menu") then
+				nuklear.menu_item("Item")
 				nested_menu(self)
-				imgui.end_menu()
+				nuklear.end_menu()
 			end
 
-			if imgui.menu_item("Click Me!") then
+			if nuklear.menu_item("Click Me!") then
 				sys.exit(0)
 			end
 
-			imgui.end_menu()
+			nuklear.end_menu()
 		end
 
-		if imgui.begin_menu("Other Menu") then
-			if imgui.menu_item("Other Menu Item") then
+		if nuklear.begin_menu("Other Menu") then
+			if nuklear.menu_item("Other Menu Item") then
 				print("Clicked 'Other Menu Item'")
 			end
-			imgui.end_menu()
+			nuklear.end_menu()
 		end
 
-		imgui.end_menu_bar()
+		nuklear.end_menu_bar()
 	end
 end
 
@@ -124,53 +124,53 @@ function update(self, dt)
 	main_menu_bar(self)
 
 	if self.show_demo_window then
-		imgui.demo()
+		nuklear.demo()
 	end
 
 	if self.show_close_window then
 		close_window(self)
 	end
 
-	imgui.begin_window("Hello, world!", nil, imgui.WINDOWFLAGS_MENUBAR)
+	nuklear.begin_window("Hello, world!", nil, nuklear.WINDOWFLAGS_MENUBAR)
 	menu_bar(self)
-	imgui.begin_tab_bar("tabs")
+	nuklear.begin_tab_bar("tabs")
 
-	local tab1_open = imgui.begin_tab_item("Tab1")
+	local tab1_open = nuklear.begin_tab_item("Tab1")
 	if tab1_open then
 		tab1(self)
-		imgui.end_tab_item()
+		nuklear.end_tab_item()
 	end
 
-	local tab2_open = imgui.begin_tab_item("Tab2")
+	local tab2_open = nuklear.begin_tab_item("Tab2")
 	if tab2_open then
 		tab2(self)
-		imgui.end_tab_item()
+		nuklear.end_tab_item()
 	end
 
-	local tab3_open = imgui.begin_tab_item("Tab3")
+	local tab3_open = nuklear.begin_tab_item("Tab3")
 	if tab3_open then
 		tab3(self)
-		imgui.end_tab_item()
+		nuklear.end_tab_item()
 	end
 
-	local tab4_open = imgui.begin_tab_item("Tab4")
+	local tab4_open = nuklear.begin_tab_item("Tab4")
 	if tab4_open then
 		tab4(self)
-		imgui.end_tab_item()
+		nuklear.end_tab_item()
 	end
 
-	local tab5_open = imgui.begin_tab_item("Tab5")
+	local tab5_open = nuklear.begin_tab_item("Tab5")
 	if tab5_open then
 		tab5(self)
-		imgui.end_tab_item()
+		nuklear.end_tab_item()
 	end
 
-	local tab6_open = imgui.begin_tab_item("Tab6")
+	local tab6_open = nuklear.begin_tab_item("Tab6")
 	if tab6_open then
 		tab6(self)
-		imgui.end_tab_item()
+		nuklear.end_tab_item()
 	end
 		
-	imgui.end_tab_bar()
-	imgui.end_window()
+	nuklear.end_tab_bar()
+	nuklear.end_window()
 end

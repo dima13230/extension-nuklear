@@ -10,14 +10,14 @@ width = 960
 height = 640
 
 [project]
-title = ImGui
+title = Nuklear
 custom_resources = example/bundle/
 
 [library]
-include_dirs = imgui
+include_dirs = nuklear
 
 [input]
-game_binding = /imgui/bindings/imgui.input_bindingc
+game_binding = /nuklear/bindings/imgui.input_bindingc
 use_accelerometer = 0
 
 [ios]
