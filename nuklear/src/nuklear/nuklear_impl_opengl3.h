@@ -26,20 +26,37 @@
 //  Only override if your GL version doesn't handle this GLSL version. See GLSL version table at the top of imgui_impl_opengl3.cpp.
 
 #pragma once
-#include "imgui.h"      // IMGUI_IMPL_API
+#define NK_IMPLEMENTATION
+#define NK_INCLUDE_FIXED_TYPES
+#define NK_INCLUDE_STANDARD_IO
+#define NK_INCLUDE_STANDARD_VARARGS
+#define NK_INCLUDE_DEFAULT_ALLOCATOR
+#define NK_INCLUDE_DEFAULT_FONT
+#define NK_PRIVATE
+#define NK_BUTTON_BEHAVIOR_STACK_SIZE 32
+#define NK_FONT_STACK_SIZE 32
+#define NK_STYLE_ITEM_STACK_SIZE 256
+#define NK_FLOAT_STACK_SIZE 256
+#define NK_VECTOR_STACK_SIZE 128
+#define NK_FLAGS_STACK_SIZE 64
+#define NK_COLOR_STACK_SIZE 256
+#include "nuklear.h"
+
 #ifndef IMGUI_DISABLE
 
 // Backend API
-IMGUI_IMPL_API bool     ImGui_ImplOpenGL3_Init(const char* glsl_version = nullptr);
-IMGUI_IMPL_API void     ImGui_ImplOpenGL3_Shutdown();
-IMGUI_IMPL_API void     ImGui_ImplOpenGL3_NewFrame();
-IMGUI_IMPL_API void     ImGui_ImplOpenGL3_RenderDrawData(ImDrawData* draw_data);
+NK_API struct nk_context*     nk_opengl3_init(struct nk_opengl3* opengl3, const char* glsl_version = nullptr);
+NK_API void                   nk_opengl3_shutdown();
+NK_API void                   nk_opengl3_new_frame();
+// TODO: Needed?
+//NK_API void     ImGui_ImplOpenGL3_RenderDrawData(ImDrawData* draw_data);
 
 // (Optional) Called by Init/NewFrame/Shutdown
-IMGUI_IMPL_API bool     ImGui_ImplOpenGL3_CreateFontsTexture();
-IMGUI_IMPL_API void     ImGui_ImplOpenGL3_DestroyFontsTexture();
-IMGUI_IMPL_API bool     ImGui_ImplOpenGL3_CreateDeviceObjects();
-IMGUI_IMPL_API void     ImGui_ImplOpenGL3_DestroyDeviceObjects();
+NK_API bool     ImGui_ImplOpenGL3_CreateFontsTexture();
+NK_API void     ImGui_ImplOpenGL3_DestroyFontsTexture();
+
+NK_API bool                   nk_opengl3_device_create();
+NK_API void                   nk_opengl3_device_destroy();
 
 // Configuration flags to add in your imconfig file:
 //#define IMGUI_IMPL_OPENGL_ES2     // Enable ES 2 (Auto-detected on Emscripten)

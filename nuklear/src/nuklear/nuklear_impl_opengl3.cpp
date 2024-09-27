@@ -113,9 +113,24 @@
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#include "imgui.h"
+#define NK_IMPLEMENTATION
+#define NK_INCLUDE_FIXED_TYPES
+#define NK_INCLUDE_STANDARD_IO
+#define NK_INCLUDE_STANDARD_VARARGS
+#define NK_INCLUDE_DEFAULT_ALLOCATOR
+#define NK_INCLUDE_DEFAULT_FONT
+#define NK_PRIVATE
+#define NK_BUTTON_BEHAVIOR_STACK_SIZE 32
+#define NK_FONT_STACK_SIZE 32
+#define NK_STYLE_ITEM_STACK_SIZE 256
+#define NK_FLOAT_STACK_SIZE 256
+#define NK_VECTOR_STACK_SIZE 128
+#define NK_FLAGS_STACK_SIZE 64
+#define NK_COLOR_STACK_SIZE 256
+#include "nuklear.h"
+
 #ifndef IMGUI_DISABLE
-#include "imgui_impl_opengl3.h"
+#include "nuklear_impl_opengl3.h"
 #include <stdio.h>
 #include <stdint.h>     // intptr_t
 #if defined(__APPLE__)
@@ -165,8 +180,8 @@
 // - You may need to regenerate imgui_impl_opengl3_loader.h to add new symbols. See https://github.com/dearimgui/gl3w_stripped
 // - You can temporarily use an unstripped version. See https://github.com/dearimgui/gl3w_stripped/releases
 // Changes to this backend using new APIs should be accompanied by a regenerated stripped loader version.
-#define IMGL3W_IMPL
-#include "imgui_impl_opengl3_loader.h"
+#define NKGL3W_IMPL
+#include "nuklear_impl_opengl3_loader.h"
 #endif
 
 // Vertex arrays are not supported on ES2/WebGL1 unless Emscripten which uses an extension
@@ -217,7 +232,7 @@
 #endif
 
 // OpenGL Data
-struct ImGui_ImplOpenGL3_Data
+struct nk_opengl3_data
 {
     GLuint          GlVersion;               // Extracted at runtime using GL_MAJOR_VERSION, GL_MINOR_VERSION queries (e.g. 320 for GL 3.2)
     char            GlslVersionString[32];   // Specified by user or detected based on compile time GL settings.
@@ -239,14 +254,24 @@ struct ImGui_ImplOpenGL3_Data
     bool            HasClipOrigin;
     bool            UseBufferSubData;
 
-    ImGui_ImplOpenGL3_Data() { memset((void*)this, 0, sizeof(*this)); }
+    nk_opengl3_data() { memset((void*)this, 0, sizeof(*this)); }
+} *backend_data;
+
+
+struct nk_opengl3
+{
+    struct nk_opengl3_data ogl;
+    struct nk_context ctx;
+    struct nk_font_atlas atlas;
+
+    struct nk_buffer cmds;
+    struct nk_draw_null_texture tex_null;
 };
 
-// Backend data stored in io.BackendRendererUserData to allow support for multiple Dear ImGui contexts
-// It is STRONGLY preferred that you use docking branch with multi-viewports (== single Dear ImGui context + multiple windows) instead of multiple Dear ImGui contexts.
-static ImGui_ImplOpenGL3_Data* ImGui_ImplOpenGL3_GetBackendData()
+// TODO: Support more than one context and hence more than one backend data structure?
+static nk_opengl3_data* nk_opengl3_get_backend_data()
 {
-    return ImGui::GetCurrentContext() ? (ImGui_ImplOpenGL3_Data*)ImGui::GetIO().BackendRendererUserData : nullptr;
+    return backend_data;
 }
 
 // OpenGL vertex attribute state (for ES 1.0 and ES 2.0 only)
@@ -274,11 +299,10 @@ struct ImGui_ImplOpenGL3_VtxAttribState
 #endif
 
 // Functions
-bool    ImGui_ImplOpenGL3_Init(const char* glsl_version)
+nk_context* nk_opengl3_init(struct nk_opengl3* opengl3, const char* glsl_version)
 {
-    ImGuiIO& io = ImGui::GetIO();
-    IMGUI_CHECKVERSION();
-    IM_ASSERT(io.BackendRendererUserData == nullptr && "Already initialized a renderer backend!");
+    nk_init_default(&opengl3->ctx, 0);
+    // TODO: Clipboard
 
     // Initialize our loader
 #if !defined(IMGUI_IMPL_OPENGL_ES2) && !defined(IMGUI_IMPL_OPENGL_ES3) && !defined(IMGUI_IMPL_OPENGL_LOADER_CUSTOM)
@@ -289,10 +313,11 @@ bool    ImGui_ImplOpenGL3_Init(const char* glsl_version)
     }
 #endif
 
+    nk_opengl3_device_create(opengl3);
+
     // Setup backend capabilities flags
-    ImGui_ImplOpenGL3_Data* bd = IM_NEW(ImGui_ImplOpenGL3_Data)();
-    io.BackendRendererUserData = (void*)bd;
-    io.BackendRendererName = "imgui_impl_opengl3";
+    struct nk_opengl3_data* bd = {0};
+    opengl3->ogl = &bd;
 
     // Query for GL version (e.g. 320 for GL 3.2)
 #if defined(IMGUI_IMPL_OPENGL_ES2)
@@ -386,7 +411,7 @@ bool    ImGui_ImplOpenGL3_Init(const char* glsl_version)
 
 void    ImGui_ImplOpenGL3_Shutdown()
 {
-    ImGui_ImplOpenGL3_Data* bd = ImGui_ImplOpenGL3_GetBackendData();
+    nk_opengl3_data* bd = nk_opengl3_get_backend_data();
     IM_ASSERT(bd != nullptr && "No renderer backend to shutdown, or already shutdown?");
     ImGuiIO& io = ImGui::GetIO();
 
@@ -399,7 +424,7 @@ void    ImGui_ImplOpenGL3_Shutdown()
 
 void    ImGui_ImplOpenGL3_NewFrame()
 {
-    ImGui_ImplOpenGL3_Data* bd = ImGui_ImplOpenGL3_GetBackendData();
+    nk_opengl3_data* bd = nk_opengl3_get_backend_data();
     IM_ASSERT(bd != nullptr && "Context or backend not initialized! Did you call ImGui_ImplOpenGL3_Init()?");
 
     if (!bd->ShaderHandle)
@@ -408,7 +433,7 @@ void    ImGui_ImplOpenGL3_NewFrame()
 
 static void ImGui_ImplOpenGL3_SetupRenderState(ImDrawData* draw_data, int fb_width, int fb_height, GLuint vertex_array_object)
 {
-    ImGui_ImplOpenGL3_Data* bd = ImGui_ImplOpenGL3_GetBackendData();
+    nk_opengl3_data* bd = nk_opengl3_get_backend_data();
 
     // Setup render state: alpha-blending enabled, no face culling, no depth testing, scissor enabled, polygon fill
     glEnable(GL_BLEND);
@@ -491,7 +516,7 @@ void    ImGui_ImplOpenGL3_RenderDrawData(ImDrawData* draw_data)
     if (fb_width <= 0 || fb_height <= 0)
         return;
 
-    ImGui_ImplOpenGL3_Data* bd = ImGui_ImplOpenGL3_GetBackendData();
+    nk_opengl3_data* bd = nk_opengl3_get_backend_data();
 
     // Backup GL state
     GLenum last_active_texture; glGetIntegerv(GL_ACTIVE_TEXTURE, (GLint*)&last_active_texture);
@@ -664,7 +689,7 @@ void    ImGui_ImplOpenGL3_RenderDrawData(ImDrawData* draw_data)
 bool ImGui_ImplOpenGL3_CreateFontsTexture()
 {
     ImGuiIO& io = ImGui::GetIO();
-    ImGui_ImplOpenGL3_Data* bd = ImGui_ImplOpenGL3_GetBackendData();
+    nk_opengl3_data* bd = nk_opengl3_get_backend_data();
 
     // Build texture atlas
     unsigned char* pixels;
@@ -696,7 +721,7 @@ bool ImGui_ImplOpenGL3_CreateFontsTexture()
 void ImGui_ImplOpenGL3_DestroyFontsTexture()
 {
     ImGuiIO& io = ImGui::GetIO();
-    ImGui_ImplOpenGL3_Data* bd = ImGui_ImplOpenGL3_GetBackendData();
+    nk_opengl3_data* bd = nk_opengl3_get_backend_data();
     if (bd->FontTexture)
     {
         glDeleteTextures(1, &bd->FontTexture);
@@ -708,7 +733,7 @@ void ImGui_ImplOpenGL3_DestroyFontsTexture()
 // If you get an error please report on github. You may try different GL context version or GLSL version. See GL<>GLSL version table at the top of this file.
 static bool CheckShader(GLuint handle, const char* desc)
 {
-    ImGui_ImplOpenGL3_Data* bd = ImGui_ImplOpenGL3_GetBackendData();
+    nk_opengl3_data* bd = nk_opengl3_get_backend_data();
     GLint status = 0, log_length = 0;
     glGetShaderiv(handle, GL_COMPILE_STATUS, &status);
     glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &log_length);
@@ -727,7 +752,7 @@ static bool CheckShader(GLuint handle, const char* desc)
 // If you get an error please report on GitHub. You may try different GL context version or GLSL version.
 static bool CheckProgram(GLuint handle, const char* desc)
 {
-    ImGui_ImplOpenGL3_Data* bd = ImGui_ImplOpenGL3_GetBackendData();
+    nk_opengl3_data* bd = nk_opengl3_get_backend_data();
     GLint status = 0, log_length = 0;
     glGetProgramiv(handle, GL_LINK_STATUS, &status);
     glGetProgramiv(handle, GL_INFO_LOG_LENGTH, &log_length);
@@ -743,9 +768,9 @@ static bool CheckProgram(GLuint handle, const char* desc)
     return (GLboolean)status == GL_TRUE;
 }
 
-bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
+bool nk_opengl3_device_create(struct nk_opengl3* opengl3)
 {
-    ImGui_ImplOpenGL3_Data* bd = ImGui_ImplOpenGL3_GetBackendData();
+    nk_opengl3_data* bd = nk_opengl3_get_backend_data();
 
     // Backup GL state
     GLint last_texture, last_array_buffer;
@@ -940,7 +965,7 @@ bool    ImGui_ImplOpenGL3_CreateDeviceObjects()
 
 void    ImGui_ImplOpenGL3_DestroyDeviceObjects()
 {
-    ImGui_ImplOpenGL3_Data* bd = ImGui_ImplOpenGL3_GetBackendData();
+    nk_opengl3_data* bd = nk_opengl3_get_backend_data();
     if (bd->VboHandle)      { glDeleteBuffers(1, &bd->VboHandle); bd->VboHandle = 0; }
     if (bd->ElementsHandle) { glDeleteBuffers(1, &bd->ElementsHandle); bd->ElementsHandle = 0; }
     if (bd->ShaderHandle)   { glDeleteProgram(bd->ShaderHandle); bd->ShaderHandle = 0; }
